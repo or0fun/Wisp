@@ -2,7 +2,7 @@
 
 [返回项目首页](../README.md)
 
-当前应用名称为 PersonalAI，以下界面名称、命令与数据路径均使用这一名称。
+应用名称为 Wisp。由 PersonalAI 更新后，已有设置、剪贴板历史和钥匙串密钥继续沿用；数据目录与 Bundle ID 保留旧值以兼容。
 
 ## 快捷操作
 
@@ -26,7 +26,7 @@
 
 需要完整按下/松开；长按重复不会触发，单键按住超过 500 ms 不计为点击。其他按键、鼠标点击/滚动、应用切换会中断匹配，安全输入开启时不匹配。连续按键不会阻止输入传给当前应用，建议使用修饰键双击，避免与打字冲突。连续按键中使用的组合键不能与已注册的组合快捷键相同。
 
-跨应用识别连续按键需要在「系统设置 → 隐私与安全性 → 辅助功能」中允许 PersonalAI；未授权时仅本应用内生效，原有组合快捷键照常使用。授权后会自动重新检查监听状态。按键识别不保存键入内容或发送键盘数据。
+跨应用识别连续按键需要在「系统设置 → 隐私与安全性 → 辅助功能」中允许 Wisp；未授权时仅本应用内生效，原有组合快捷键照常使用。授权后会自动重新检查监听状态。按键识别不保存键入内容或发送键盘数据。
 
 ### 配置引导与后台诊断
 
@@ -34,15 +34,15 @@
 
 「后台唤起」页分别显示系统实际授权、全局监听、安全输入状态，并提供当前应用路径、Finder 定位和正确的系统授权入口。点击「开始后台唤起测试」会收起窗口并切换到其他应用；20 秒内按下当前快捷动作快捷键，只有实际从后台触发该快捷键才算通过。预览模式不执行后台测试。
 
-**开关已开、重启后仍不生效：** 返回引导检查「系统实际授权」。若仍显示未生效，在「系统设置 → 隐私与安全性 → 辅助功能」移除旧 PersonalAI 条目，用「＋」重新添加 `/Applications/PersonalAI.app` 并开启，再退出并重新打开应用。以引导中的实际状态和后台测试结果为准。
+**开关已开、重启后仍不生效：** 返回引导检查「系统实际授权」。若仍显示未生效，在「系统设置 → 隐私与安全性 → 辅助功能」移除旧 PersonalAI / Wisp 条目，用「＋」重新添加 `/Applications/Wisp.app` 并开启，再退出并重新打开应用。以引导中的实际状态和后台测试结果为准。
 
 默认本地构建使用 ad-hoc 临时签名，更新后代码哈希变化可能导致旧权限失效。正式分发应使用固定开发者签名，可指定本机已有的签名身份：
 
 ```bash
-PERSONALAI_SIGNING_IDENTITY='Developer ID Application: Your Name (TEAMID)' ./scripts/build-app.sh release
+WISP_SIGNING_IDENTITY='Developer ID Application: Your Name (TEAMID)' ./scripts/build-app.sh release
 ```
 
-脚本不会创建证书或更改系统授权。缺少有效签名身份时，请按引导对更新后的应用重新授权。引导进度单独保存在本地 `setup.json`，不含密钥或按键内容。
+构建脚本也兼容旧版 `PERSONALAI_SIGNING_IDENTITY` 和 `PERSONALAI_DISABLE_SPM_SANDBOX` 参数，新参数优先。脚本不会创建证书或更改系统授权。缺少有效签名身份时，请按引导对更新后的应用重新授权。引导进度单独保存在本地 `setup.json`，不含密钥或按键内容。
 
 ## 实时计算
 
@@ -89,7 +89,7 @@ https://www.google.com/search?q={query}
 2. 工作目录、整个流程超时、是否自动复制最终结果。
 3. 一个或多个脚本步骤，每步设置解释器绝对路径和脚本，可调整顺序。
 
-第一步的 stdin 是用户输入；之后每一步的 stdin 是前一步 stdout。不超过 32,000 字节的输入还会写入环境变量 `PERSONALAI_INPUT`；更大的输入仅通过 stdin 提供。应用不会将输入内容拼进脚本源码。stdout 必须是 UTF-8，输出最大 4 MB。非零退出会停止后续步骤并显示 stderr；取消或超时会停止整个进程组，包括子进程。
+第一步的 stdin 是用户输入；之后每一步的 stdin 是前一步 stdout。不超过 32,000 字节的输入还会写入环境变量 `WISP_INPUT`（兼容旧名 `PERSONALAI_INPUT`）；更大的输入仅通过 stdin 提供。应用不会将输入内容拼进脚本源码。stdout 必须是 UTF-8，输出最大 4 MB。非零退出会停止后续步骤并显示 stderr；取消或超时会停止整个进程组，包括子进程。
 
 例如使用 `/bin/zsh`，为每行增加前缀：
 
@@ -121,7 +121,7 @@ print(json.dumps(json.load(sys.stdin), ensure_ascii=False, indent=2))
 默认构建命令见 [README](../README.md)。只有在受限构建环境不允许 SwiftPM 启动子沙箱时，才需要使用：
 
 ```bash
-PERSONALAI_DISABLE_SPM_SANDBOX=1 ./scripts/build-app.sh release
+WISP_DISABLE_SPM_SANDBOX=1 ./scripts/build-app.sh release
 ```
 
 该选项仅影响构建工具；应用没有外部 SwiftPM 依赖。
@@ -129,7 +129,7 @@ PERSONALAI_DISABLE_SPM_SANDBOX=1 ./scripts/build-app.sh release
 检查界面时，可在独立预览模式中运行：
 
 ```bash
-open -n build/PersonalAI.app --args --preview
+open -n build/Wisp.app --args --preview
 ```
 
 预览模式使用临时独立数据目录、暂停剪贴板记录，不注册系统组合快捷键；连续按键仅在本应用内识别，也不执行后台唤起测试。退出预览实例后正常启动，才会使用正式数据目录。

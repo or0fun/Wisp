@@ -69,7 +69,7 @@ struct SettingsView: View {
     }
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 7) {
-            HStack(spacing: 10) { AppMark(size: 35); VStack(alignment: .leading, spacing: 3) { Text("PersonalAI").font(.headline); Text("让操作更轻一点").font(.system(size: 10)).foregroundStyle(.secondary) } }.padding(.bottom, 25).padding(.top, 18)
+            HStack(spacing: 10) { AppMark(size: 35); VStack(alignment: .leading, spacing: 3) { Text("Wisp").font(.headline); Text("让操作更轻一点").font(.system(size: 10)).foregroundStyle(.secondary) } }.padding(.bottom, 25).padding(.top, 18)
             ForEach(SettingsPage.allCases, id: \.self) { item in
                 Button { page = item } label: {
                     Label(item.rawValue, systemImage: item.symbol).font(.system(size: 13)).frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 12).padding(.vertical, 11)
@@ -95,7 +95,7 @@ struct SettingsView: View {
                 }
                 Text("组合键需含 ⌘、⌥ 或 ⌃。连续按键先按下并松开第一个键，再按第二个；同一个键按两次就是双击，例如 ⌘ → ⌘。Esc 取消录制。").font(.caption).foregroundStyle(.secondary)
                 Text("连续按键不会拦截原始输入，建议使用修饰键双击，避免影响正常打字。").font(.caption).foregroundStyle(.secondary)
-                if draft.hasKeySequences && !accessibilityGranted { Text("连续按键跨应用唤起需要辅助功能授权；当前仅在 PersonalAI 内生效。").font(.caption).foregroundStyle(.orange) }
+                if draft.hasKeySequences && !accessibilityGranted { Text("连续按键跨应用唤起需要辅助功能授权；当前仅在 Wisp 内生效。").font(.caption).foregroundStyle(.orange) }
             }
             Section("启动与权限") {
                 HStack {
@@ -251,7 +251,7 @@ struct SettingsView: View {
         do {
             if enabled { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
             loginEnabled = SMAppService.mainApp.status == .enabled
-            message = SMAppService.mainApp.status == .requiresApproval ? "请在系统设置 → 通用 → 登录项中允许 PersonalAI" : "登录启动设置已更新"; error = false
+            message = SMAppService.mainApp.status == .requiresApproval ? "请在系统设置 → 通用 → 登录项中允许 Wisp" : "登录启动设置已更新"; error = false
         } catch { message = "登录启动设置失败：\(error.localizedDescription)"; self.error = true }
     }
     private func pickApplication() {
@@ -284,7 +284,7 @@ private struct WorkflowEditor: View {
                 Toggle("自动复制最终结果", isOn: $workflow.copyOutput)
             }
             Section {
-                Text("每步读取 stdin，上一步 stdout 传给下一步。小于 32 KB 的输入同时可用环境变量 PERSONALAI_INPUT 读取。脚本以当前用户权限运行。").font(.caption).foregroundStyle(.secondary)
+                Text("每步读取 stdin，上一步 stdout 传给下一步。不超过 32,000 字节的输入同时可用环境变量 WISP_INPUT（兼容 PERSONALAI_INPUT）读取。脚本以当前用户权限运行。").font(.caption).foregroundStyle(.secondary)
             }
             ForEach($workflow.steps) { $step in
                 Section {

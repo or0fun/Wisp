@@ -5,6 +5,7 @@ final class DiskStore {
     let directory: URL
     let images: URL
     init(directory: URL? = nil) throws {
+        // Keep the original location so renaming the app preserves existing data.
         self.directory = directory ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("PersonalAI", isDirectory: true)
         images = self.directory.appendingPathComponent("Images", isDirectory: true)
         try FileManager.default.createDirectory(at: images, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
@@ -32,6 +33,7 @@ final class DiskStore {
 }
 
 enum Keychain {
+    // This stable service identifier preserves access to existing API keys.
     private static let service = "com.fangjun.personalai"
     static func read(account: String = "doubao-api-key") throws -> String {
         let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: account, kSecReturnData as String: true, kSecMatchLimit as String: kSecMatchLimitOne]

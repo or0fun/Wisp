@@ -35,7 +35,7 @@ struct PanelView: View {
     private var header: some View {
         HStack(spacing: 10) {
             AppMark(size: 26)
-            Text("PersonalAI").font(.system(size: 13, weight: .semibold))
+            Text("Wisp").font(.system(size: 13, weight: .semibold))
             Text("/ 你的效率入口").font(.system(size: 11)).foregroundStyle(Palette.secondary)
             Spacer()
             ForEach(Array(PanelMode.allCases.enumerated()), id: \.element) { index, mode in

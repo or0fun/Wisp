@@ -29,7 +29,7 @@ enum ActionService {
     }
     static func codex(input: String, settings: Settings, runner: ProcessRunner) async throws -> String {
         let executable = try codexExecutable(settings: settings)
-        let workspace = FileManager.default.temporaryDirectory.appendingPathComponent("personalai-codex-\(UUID().uuidString)")
+        let workspace = FileManager.default.temporaryDirectory.appendingPathComponent("wisp-codex-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
         defer { try? FileManager.default.removeItem(at: workspace) }
         var arguments = ["exec", "--skip-git-repo-check", "--ephemeral", "--sandbox", "read-only", "--color", "never", "--output-last-message", "{output}"]

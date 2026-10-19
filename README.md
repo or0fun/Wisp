@@ -4,7 +4,7 @@
 
 Wisp 是一个受 Alfred 启发的原生 macOS 效率工具：找回刚才复制的内容，输入算式直接得到结果，把问题交给 AI，或用脚本处理一段文本。使用 SwiftUI + AppKit 构建，无第三方 Swift 包依赖。
 
-> 项目仓库名为 **Wisp**，当前应用名称、构建产物和数据目录仍使用 **PersonalAI**。下文命令与实际产物保持一致。
+> 应用名称与构建产物已统一为 **Wisp**。为兼容旧版，本地数据目录仍使用 `PersonalAI`，已有设置、剪贴板历史和钥匙串密钥继续沿用。
 
 [使用与配置指南](docs/usage.md) · [反馈问题](https://github.com/or0fun/Wisp/issues)
 
@@ -37,10 +37,10 @@ Wisp 是一个受 Alfred 启发的原生 macOS 效率工具：找回刚才复制
 git clone https://github.com/or0fun/Wisp.git
 cd Wisp
 ./scripts/build-app.sh release
-open build/PersonalAI.app
+open build/Wisp.app
 ```
 
-构建产物为 `build/PersonalAI.app`。建议将应用复制到 `/Applications` 后从固定位置使用，再配置系统权限。构建脚本只负责构建和签名，不会自动安装应用。
+构建产物为 `build/Wisp.app`。建议将应用复制到 `/Applications` 后从固定位置使用，再配置系统权限。构建脚本只负责构建和签名，不会自动安装应用。
 
 应用常驻菜单栏，不显示 Dock 图标。首次启动会打开配置引导；也可稍后从菜单栏重新进入。
 

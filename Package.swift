@@ -2,10 +2,10 @@
 import PackageDescription
 
 let package = Package(
-    name: "PersonalAI",
+    name: "Wisp",
     platforms: [.macOS(.v14)],
-    products: [.executable(name: "PersonalAI", targets: ["PersonalAI"])],
-    targets: [.executableTarget(name: "PersonalAI", linkerSettings: [
+    products: [.executable(name: "Wisp", targets: ["Wisp"])],
+    targets: [.executableTarget(name: "Wisp", linkerSettings: [
         .linkedFramework("AppKit"), .linkedFramework("Carbon"),
         .linkedFramework("Security"), .linkedFramework("ServiceManagement")
     ])]

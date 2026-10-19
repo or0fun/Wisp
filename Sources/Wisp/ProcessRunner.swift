@@ -27,7 +27,7 @@ final class ProcessRunner: @unchecked Sendable {
     private func runSync(executable: String, arguments: [String], input: String, directory: URL, timeout: Double, script: String?, outputFile: Bool) throws -> String {
         if isCancelled { throw CancellationError() }
         let manager = FileManager.default
-        let temporary = manager.temporaryDirectory.appendingPathComponent("personalai-\(UUID().uuidString)", isDirectory: true)
+        let temporary = manager.temporaryDirectory.appendingPathComponent("wisp-\(UUID().uuidString)", isDirectory: true)
         try manager.createDirectory(at: temporary, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
         defer { try? manager.removeItem(at: temporary) }
         let stdinURL = temporary.appendingPathComponent("input")
@@ -57,7 +57,9 @@ final class ProcessRunner: @unchecked Sendable {
         let args = [executable] + arguments.map { $0 == "{output}" ? resultURL.path : $0 } + (script == nil ? [] : [scriptURL.path])
         var environment = ProcessInfo.processInfo.environment
         environment["PATH"] = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:" + (environment["PATH"] ?? "")
-        environment["PERSONALAI_INPUT"] = input.utf8.count <= 32_000 ? input : ""
+        let inputEnvironment = input.utf8.count <= 32_000 ? input : ""
+        environment["WISP_INPUT"] = inputEnvironment
+        environment["PERSONALAI_INPUT"] = inputEnvironment // Compatibility with existing workflows.
         // Large inputs always remain available in stdin; avoid exceeding exec's environment limit.
         let argv = args.map { strdup($0) } + [nil]
         let env = environment.map { strdup("\($0.key)=\($0.value)") } + [nil]

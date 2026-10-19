@@ -11,7 +11,7 @@ struct SetupGuideView: View {
             HStack(spacing: 13) {
                 AppMark(size: 42)
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("让 PersonalAI 随时响应你").font(.system(size: 24, weight: .semibold))
+                    Text("让 Wisp 随时响应你").font(.system(size: 24, weight: .semibold))
                     Text("先配置快捷入口，再验证后台唤起。AI 工具可以稍后连接。").foregroundStyle(.secondary)
                 }
                 Spacer()
@@ -75,11 +75,11 @@ struct SetupGuideView: View {
                 }
             }
             VStack(alignment: .leading, spacing: 9) {
-                Text("1. 打开「系统设置 → 隐私与安全性 → 辅助功能」，找到 PersonalAI 并开启。")
+                Text("1. 打开「系统设置 → 隐私与安全性 → 辅助功能」，找到 Wisp 并开启。")
                 Text("2. 列表没有应用时，点「＋」添加下方路径的应用。授权后返回，本页会自动检测。")
-                Text("3. 开关已开但这里仍显示未生效：移除列表中的旧 PersonalAI，再用「＋」添加当前应用并开启，然后退出并重新打开 PersonalAI。").foregroundStyle(.orange)
+                Text("3. 开关已开但这里仍显示未生效：移除列表中的旧应用条目，再用「＋」添加当前应用并开启，然后退出并重新打开 Wisp。").foregroundStyle(.orange)
                 Text(Bundle.main.bundleURL.path).font(.system(size: 11, design: .monospaced)).textSelection(.enabled)
-                if Bundle.main.object(forInfoDictionaryKey: "PersonalAIAdHocBuild") as? Bool == true {
+                if Bundle.main.object(forInfoDictionaryKey: "WispAdHocBuild") as? Bool == true {
                     Text("当前是临时签名的本地开发版本；覆盖更新后旧授权可能失效。正式分发应使用固定的开发者签名。").font(.caption).foregroundStyle(.secondary)
                 }
             }.font(.callout)

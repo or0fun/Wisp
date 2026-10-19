@@ -26,17 +26,17 @@ private final class CommandPanel: NSPanel {
         NSApp.setActivationPolicy(.accessory)
         do {
             let preview = CommandLine.arguments.contains("--preview")
-            let directory: URL? = preview ? FileManager.default.temporaryDirectory.appendingPathComponent("PersonalAI-Preview", isDirectory: true) : nil
+            let directory: URL? = preview ? FileManager.default.temporaryDirectory.appendingPathComponent("Wisp-Preview", isDirectory: true) : nil
             model = AppModel(disk: try DiskStore(directory: directory))
             if preview { model.clipboard.paused = true }
         } catch {
-            let alert = NSAlert(); alert.messageText = "无法启动 PersonalAI"; alert.informativeText = error.localizedDescription; alert.runModal(); NSApp.terminate(nil); return
+            let alert = NSAlert(); alert.messageText = "无法启动 Wisp"; alert.informativeText = error.localizedDescription; alert.runModal(); NSApp.terminate(nil); return
         }
         installMainMenu()
         createPanel()
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        statusItem.button?.image = NSImage(systemSymbolName: "command.square", accessibilityDescription: "PersonalAI")
-        statusItem.button?.toolTip = "PersonalAI · 快捷动作与剪贴板"
+        statusItem.button?.image = NSImage(systemSymbolName: "command.square", accessibilityDescription: "Wisp")
+        statusItem.button?.toolTip = "Wisp · 快捷动作与剪贴板"
         let menu = NSMenu(); menu.delegate = self; statusItem.menu = menu; updateMenu(menu)
         model.onHide = { [weak self] in self?.hidePanel() }
         model.onSettings = { [weak self] in self?.showSettings() }
@@ -167,7 +167,7 @@ private final class CommandPanel: NSPanel {
         if let page { model.requestedSettingsPage = page }
         if settingsWindow == nil {
             settingsWindow = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 960, height: 720), styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
-            settingsWindow?.title = "PersonalAI 设置"; settingsWindow?.minSize = NSSize(width: 940, height: 680)
+            settingsWindow?.title = "Wisp 设置"; settingsWindow?.minSize = NSSize(width: 940, height: 680)
             settingsWindow?.isReleasedWhenClosed = false; settingsWindow?.delegate = self; settingsWindow?.center()
             settingsWindow?.contentView = NSHostingView(rootView: SettingsView(model: model))
         }
@@ -182,7 +182,7 @@ private final class CommandPanel: NSPanel {
         model.setup.page = page; model.setup.presented(); refreshSetup()
         if setupWindow == nil {
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 780, height: 740), styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
-            window.title = "PersonalAI 配置引导"; window.minSize = NSSize(width: 760, height: 670); window.isReleasedWhenClosed = false; window.center()
+            window.title = "Wisp 配置引导"; window.minSize = NSSize(width: 760, height: 670); window.isReleasedWhenClosed = false; window.center()
             window.contentView = NSHostingView(rootView: SetupGuideView(model: model, setup: model.setup, openSettings: { [weak self] page in self?.openSettings(page) }, testShortcut: { [weak self] in self?.beginBackgroundTest() }, close: { [weak self] completed in
                 guard let self else { return }
                 if completed { self.model.setup.finish() }
@@ -237,7 +237,7 @@ private final class CommandPanel: NSPanel {
         menu.addItem(.separator())
         addMenuItem(menu, "设置…", #selector(showSettings))
         addMenuItem(menu, "配置引导与后台诊断…", #selector(openSetup))
-        addMenuItem(menu, "退出 PersonalAI", #selector(quit))
+        addMenuItem(menu, "退出 Wisp", #selector(quit))
     }
     private func addMenuItem(_ menu: NSMenu, _ title: String, _ action: Selector) { let item = NSMenuItem(title: title, action: action, keyEquivalent: ""); item.target = self; menu.addItem(item) }
     @objc private func openActions() { show(.actions) }
@@ -250,7 +250,7 @@ private final class CommandPanel: NSPanel {
         let appItem = NSMenuItem(); let appMenu = NSMenu(); appItem.submenu = appMenu; main.addItem(appItem)
         let settings = NSMenuItem(title: "设置…", action: #selector(showSettings), keyEquivalent: ","); settings.target = self; appMenu.addItem(settings)
         let setup = NSMenuItem(title: "配置引导…", action: #selector(openSetup), keyEquivalent: ""); setup.target = self; appMenu.addItem(setup)
-        appMenu.addItem(NSMenuItem(title: "退出 PersonalAI", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        appMenu.addItem(NSMenuItem(title: "退出 Wisp", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         let edit = NSMenuItem(); let editMenu = NSMenu(title: "编辑"); edit.submenu = editMenu; main.addItem(edit)
         editMenu.addItem(NSMenuItem(title: "撤销", action: Selector(("undo:")), keyEquivalent: "z"))
         editMenu.addItem(NSMenuItem(title: "剪切", action: #selector(NSText.cut(_:)), keyEquivalent: "x"))
