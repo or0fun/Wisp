@@ -56,43 +56,72 @@ struct PanelView: View {
                 .font(.system(size: 21, weight: .light)).foregroundStyle(Palette.accent).frame(width: 27).padding(.top, 9)
             ZStack(alignment: .topLeading) {
                 if model.query.isEmpty { Text(model.placeholder).font(.system(size: 21)).foregroundStyle(.white.opacity(0.28)).padding(.top, 7).allowsHitTesting(false) }
-                CommandInput(text: $model.query, focusToken: model.focusToken, onSubmit: model.execute, onMove: model.move, onEscape: { model.onHide?() }, onChange: model.inputChanged)
+                CommandInput(text: $model.query, focusToken: model.focusToken, onSubmit: model.execute, onMove: model.move, onSwitchColumn: model.switchActionColumn, onEscape: { model.onHide?() }, onChange: model.inputChanged)
             }.frame(height: 62)
         }.padding(.horizontal, 24).padding(.top, 8).padding(.bottom, 12)
     }
     private var actionBody: some View {
         HStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Text(model.lockedWorkflow == nil ? (model.mode == .workflows ? "选择工作流程" : "使用输入内容") : "已绑定的工作流程")
-                    Spacer(); Text("\(model.actions.count) 项")
-                }.font(.system(size: 10, weight: .medium)).foregroundStyle(Palette.secondary).padding(.horizontal, 12)
+            if model.mode == .actions {
+                let columns = model.actionColumns
+                actionColumn("AI / 搜索", symbol: "magnifyingglass", indices: columns[0], emptyMessage: "当前关键词已匹配右侧工作流程。")
+                Rectangle().fill(.white.opacity(0.07)).frame(width: 1)
+                actionColumn("工作流程", symbol: "point.3.connected.trianglepath.dotted", indices: columns[1], emptyMessage: model.settings.workflows.contains(where: \.enabled) ? "当前关键词未匹配工作流程。" : "添加并启用工作流程，直接处理输入内容。", canAddWorkflow: !model.settings.workflows.contains(where: \.enabled))
+            } else {
+                actionColumn(model.lockedWorkflow == nil ? "选择工作流程" : "已绑定的工作流程", symbol: "point.3.connected.trianglepath.dotted", indices: Array(model.actions.indices), emptyMessage: "暂无启用的流程，请在设置中添加。", canAddWorkflow: true)
+                Rectangle().fill(.white.opacity(0.07)).frame(width: 1)
+                workflowHelp
+            }
+        }.frame(maxHeight: .infinity)
+    }
+    private func actionColumn(_ title: String, symbol: String, indices: [Int], emptyMessage: String, canAddWorkflow: Bool = false) -> some View {
+        let actions = model.actions
+        let rows = indices.filter { actions.indices.contains($0) }.map { (index: $0, action: actions[$0]) }
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 7) {
+                Label(title, systemImage: symbol).font(.system(size: 12, weight: .semibold))
+                Spacer()
+                Text("\(rows.count) 项").font(.system(size: 10))
+            }.foregroundStyle(Palette.secondary).padding(.horizontal, 12).padding(.top, 3)
+            if rows.isEmpty {
+                VStack(spacing: 12) {
+                    Image(systemName: symbol).font(.system(size: 25, weight: .light)).foregroundStyle(Palette.accent.opacity(0.7))
+                    Text(emptyMessage).font(.system(size: 12)).foregroundStyle(Palette.secondary).multilineTextAlignment(.center)
+                    if canAddWorkflow {
+                        Button("添加工作流程") { model.requestedSettingsPage = .workflows; model.onSettings?() }.buttonStyle(.bordered)
+                    }
+                }.padding(24).frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
                 ScrollViewReader { proxy in
                     ScrollView {
                         LazyVStack(spacing: 4) {
-                            ForEach(Array(model.actions.enumerated()), id: \.element.id) { index, action in
-                                actionRow(action, index: index).id(action.id)
+                            ForEach(rows, id: \.action.id) { row in
+                                actionRow(row.action, index: row.index).id(row.action.id)
                             }
                         }
-                    }.onChange(of: model.selection) { _, value in if model.actions.indices.contains(value) { proxy.scrollTo(model.actions[value].id, anchor: .center) } }
+                    }.onChange(of: model.selection) { _, value in
+                        if let row = rows.first(where: { $0.index == value }) { proxy.scrollTo(row.action.id, anchor: .center) }
+                    }.onChange(of: model.query) { _, _ in
+                        if let row = rows.first(where: { $0.index == model.selection }) { proxy.scrollTo(row.action.id, anchor: .center) }
+                    }
                 }
-                if model.actions.isEmpty { Text("暂无启用的流程，请在设置中添加。").foregroundStyle(Palette.secondary).padding(12) }
-            }.padding(14).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            Rectangle().fill(.white.opacity(0.07)).frame(width: 1)
-            VStack(alignment: .leading, spacing: 12) {
-                Image(systemName: model.mode == .workflows ? "point.3.connected.trianglepath.dotted" : "sparkle")
-                    .font(.system(size: 24, weight: .light)).foregroundStyle(Palette.accent).padding(.top, 2)
-                Text(model.mode == .workflows ? "把重复交给流程" : "从一个想法开始").font(.system(size: 19, weight: .medium))
-                Text(model.mode == .workflows ? "输入内容，选择流程。脚本依次执行，结果自动传给下一步。" : "输入内容，选择 AI、搜索或工作流程。用键盘把想法交给合适的工具。")
-                    .font(.system(size: 12)).foregroundStyle(Palette.secondary).lineSpacing(5).fixedSize(horizontal: false, vertical: true)
-                Divider().overlay(.white.opacity(0.05))
-                Text("↑ ↓ 选择   ·   ↵ 执行\n⇧ ↵ 换行   ·   esc 收起")
-                    .font(.system(size: 10, design: .monospaced)).foregroundStyle(Palette.secondary).lineSpacing(7)
-                Spacer(minLength: 0)
-                Text(model.mode == .workflows ? "在设置中为每个流程绑定独立快捷键。" : "试试：g macOS 快捷键\n也可以直接粘贴一整段内容。")
-                    .font(.system(size: 10)).foregroundStyle(Palette.secondary.opacity(0.7)).lineSpacing(4).fixedSize(horizontal: false, vertical: true)
-            }.padding(.horizontal, 24).padding(.vertical, 20).frame(width: 255, alignment: .leading)
-        }.frame(maxHeight: .infinity)
+            }
+        }.padding(14).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+    private var workflowHelp: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Image(systemName: "point.3.connected.trianglepath.dotted")
+                .font(.system(size: 24, weight: .light)).foregroundStyle(Palette.accent).padding(.top, 2)
+            Text("把重复交给流程").font(.system(size: 19, weight: .medium))
+            Text("输入内容，选择流程。脚本依次执行，结果自动传给下一步。")
+                .font(.system(size: 12)).foregroundStyle(Palette.secondary).lineSpacing(5).fixedSize(horizontal: false, vertical: true)
+            Divider().overlay(.white.opacity(0.05))
+            Text("↑ ↓ 选择   ·   ↵ 执行\n⇧ ↵ 换行   ·   esc 收起")
+                .font(.system(size: 10, design: .monospaced)).foregroundStyle(Palette.secondary).lineSpacing(7)
+            Spacer(minLength: 0)
+            Text("在设置中为每个流程绑定独立快捷键。")
+                .font(.system(size: 10)).foregroundStyle(Palette.secondary.opacity(0.7)).lineSpacing(4).fixedSize(horizontal: false, vertical: true)
+        }.padding(.horizontal, 24).padding(.vertical, 20).frame(width: 255, alignment: .leading)
     }
     private func actionRow(_ action: ActionItem, index: Int) -> some View {
         Button { model.selection = index; model.execute() } label: {
@@ -100,7 +129,7 @@ struct PanelView: View {
                 Image(systemName: action.symbol).font(.system(size: 18)).foregroundStyle(Palette.tint(action.tint))
                     .frame(width: 38, height: 38).background(Palette.tint(action.tint).opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
                 VStack(alignment: .leading, spacing: 5) {
-                    Text(action.title).font(.system(size: action.id == "calculator" ? 23 : 14, weight: .medium)).foregroundStyle(.white.opacity(0.92))
+                    Text(action.title).font(.system(size: action.id == "calculator" ? 23 : 14, weight: .medium)).foregroundStyle(.white.opacity(0.92)).lineLimit(1)
                     Text(action.subtitle).font(.system(size: 10)).foregroundStyle(Palette.secondary).lineLimit(1)
                 }
                 Spacer(minLength: 4)
@@ -109,7 +138,8 @@ struct PanelView: View {
             }.padding(.horizontal, 12).padding(.vertical, 9).contentShape(Rectangle())
                 .background(model.selection == index ? Palette.accent.opacity(0.12) : .clear, in: RoundedRectangle(cornerRadius: 10))
                 .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(model.selection == index ? Palette.accent.opacity(0.2) : .clear))
-        }.buttonStyle(.plain)
+        }.buttonStyle(.plain).help(action.title + " · " + action.subtitle)
+            .accessibilityAddTraits(model.selection == index ? .isSelected : [])
     }
     private var clipboardBody: some View {
         HStack(spacing: 0) {
@@ -183,7 +213,12 @@ struct PanelView: View {
                 if let notice = setup.notice(model.settings) { Button(notice) { model.onSetup?(.permissions) }.font(.system(size: 10)).foregroundStyle(.orange).buttonStyle(.plain) }
                 if clipboard.paused || !model.settings.clipboardEnabled { Text("剪贴板记录已暂停").font(.system(size: 10)).foregroundStyle(.orange) }
                 if model.mode == .clipboard { KeyCap(text: "↵"); Text(model.settings.pasteOnSelect ? "粘贴到原应用" : "复制选中项").font(.system(size: 10)).foregroundStyle(Palette.secondary) }
-                else { KeyCap(text: "↑ ↓"); Text("选择").font(.system(size: 10)).foregroundStyle(Palette.secondary); KeyCap(text: "↵"); Text("执行").font(.system(size: 10)).foregroundStyle(Palette.secondary) }
+                else {
+                    if model.mode == .actions, !model.running, model.result == nil, model.actionColumns.allSatisfy({ !$0.isEmpty }) {
+                        KeyCap(text: "Tab"); Text("切列").font(.system(size: 10)).foregroundStyle(Palette.secondary)
+                    }
+                    KeyCap(text: "↑ ↓"); Text("选择").font(.system(size: 10)).foregroundStyle(Palette.secondary); KeyCap(text: "↵"); Text("执行").font(.system(size: 10)).foregroundStyle(Palette.secondary)
+                }
             }.padding(.horizontal, 22).frame(height: 43)
         }
     }

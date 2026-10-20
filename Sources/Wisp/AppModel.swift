@@ -71,6 +71,10 @@ import AppKit
         if let keyword = query.split(separator: " ", maxSplits: 1).first, query.contains(" "), let match = values.first(where: { !$0.keyword.isEmpty && $0.keyword.lowercased() == keyword.lowercased() }) { return [match] }
         return values
     }
+    var actionColumns: [[Int]] {
+        let values = actions
+        return [values.indices.filter { !values[$0].isWorkflow }, values.indices.filter { values[$0].isWorkflow }]
+    }
     var rowCount: Int { mode == .clipboard ? clips.count : actions.count }
     var selectedClip: Clip? { guard mode == .clipboard, clips.indices.contains(selection) else { return nil }; return clips[selection] }
     var placeholder: String { switch mode { case .clipboard: return "搜索剪贴板内容或来源应用…"; case .actions: return "输入想法、问题，或 g 搜索内容…"; case .workflows: return "输入内容，交给工作流程…" } }
@@ -80,7 +84,23 @@ import AppKit
         focusToken = UUID()
     }
     func switchMode(_ mode: PanelMode) { open(mode) }
-    func move(_ delta: Int) { guard rowCount > 0 else { return }; selection = (min(selection, rowCount - 1) + delta + rowCount) % rowCount }
+    func move(_ delta: Int) {
+        guard rowCount > 0 else { return }
+        let current = max(0, min(selection, rowCount - 1))
+        let rows = mode == .actions ? actionColumns.first(where: { $0.contains(current) }) ?? Array(0..<rowCount) : Array(0..<rowCount)
+        let position = rows.firstIndex(of: current) ?? 0
+        selection = rows[(position + delta % rows.count + rows.count) % rows.count]
+    }
+    func switchActionColumn() -> Bool {
+        guard mode == .actions, !running, result == nil else { return false }
+        let columns = actionColumns
+        guard columns.allSatisfy({ !$0.isEmpty }) else { return false }
+        let current = columns[0].contains(selection) ? 0 : 1
+        let row = columns[current].firstIndex(of: selection) ?? 0
+        let target = columns[1 - current]
+        selection = target[min(row, target.count - 1)]
+        return true
+    }
     func inputChanged() { selection = 0; if !running { result = nil } }
     func execute() {
         guard !running else { return }

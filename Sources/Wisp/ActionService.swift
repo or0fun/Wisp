@@ -11,6 +11,7 @@ struct ActionItem: Identifiable {
     let tint: String
     let keyword: String
     let destination: ActionDestination
+    var isWorkflow: Bool { if case .workflow = destination { return true }; return false }
 }
 enum ActionService {
     static func codexExecutable(settings: Settings) throws -> String {

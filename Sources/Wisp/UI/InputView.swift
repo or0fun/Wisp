@@ -6,6 +6,7 @@ struct CommandInput: NSViewRepresentable {
     let focusToken: UUID
     let onSubmit: () -> Void
     let onMove: (Int) -> Void
+    let onSwitchColumn: () -> Bool
     let onEscape: () -> Void
     let onChange: () -> Void
     func makeCoordinator() -> Coordinator { Coordinator(self) }
@@ -35,7 +36,7 @@ struct CommandInput: NSViewRepresentable {
     }
     private func update(_ view: CommandTextView, coordinator: Coordinator) {
         if view.string != text { view.string = text; view.setSelectedRange(NSRange(location: view.string.utf16.count, length: 0)) }
-        view.onSubmit = onSubmit; view.onMove = onMove; view.onEscape = onEscape
+        view.onSubmit = onSubmit; view.onMove = onMove; view.onSwitchColumn = onSwitchColumn; view.onEscape = onEscape
     }
     final class Coordinator: NSObject, NSTextViewDelegate {
         var parent: CommandInput
@@ -51,6 +52,7 @@ struct CommandInput: NSViewRepresentable {
 final class CommandTextView: NSTextView {
     var onSubmit: (() -> Void)?
     var onMove: ((Int) -> Void)?
+    var onSwitchColumn: (() -> Bool)?
     var onEscape: (() -> Void)?
     override func keyDown(with event: NSEvent) {
         // Let the input method finish composing Chinese before interpreting Return/arrows.
@@ -60,6 +62,8 @@ final class CommandTextView: NSTextView {
         case 36 where !modifiers.contains(.shift), 76 where !modifiers.contains(.shift): onSubmit?()
         case 125 where modifiers.isEmpty: onMove?(1)
         case 126 where modifiers.isEmpty: onMove?(-1)
+        case 48 where modifiers.isEmpty || modifiers == .shift:
+            if onSwitchColumn?() != true { super.keyDown(with: event) }
         case 53: onEscape?()
         default: super.keyDown(with: event)
         }
