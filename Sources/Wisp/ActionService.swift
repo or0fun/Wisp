@@ -1,7 +1,7 @@
 import AppKit
 
 enum ActionDestination {
-    case codex, doubao, search(SearchEngine), workflow(Workflow), calculation(CalculationResult)
+    case codex, doubao, search(SearchEngine), workflow(Workflow), calculation(CalculationResult), local(LocalSearchResult)
 }
 struct ActionItem: Identifiable {
     let id: String
@@ -12,6 +12,8 @@ struct ActionItem: Identifiable {
     let keyword: String
     let destination: ActionDestination
     var isWorkflow: Bool { if case .workflow = destination { return true }; return false }
+    var localResult: LocalSearchResult? { if case .local(let result) = destination { return result }; return nil }
+    var isFileSearch: Bool { localResult.map { !$0.isApplication } ?? false }
 }
 enum ActionService {
     static func codexExecutable(settings: Settings) throws -> String {

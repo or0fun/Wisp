@@ -64,9 +64,11 @@ struct PanelView: View {
         HStack(spacing: 0) {
             if model.mode == .actions {
                 let columns = model.actionColumns
-                actionColumn("AI / 搜索", symbol: "magnifyingglass", indices: columns[0], emptyMessage: "当前关键词已匹配右侧工作流程。")
+                actionColumn("快捷动作", symbol: "sparkles", indices: columns[0], emptyMessage: "当前关键词已匹配其他列入口。")
                 Rectangle().fill(.white.opacity(0.07)).frame(width: 1)
                 actionColumn("工作流程", symbol: "point.3.connected.trianglepath.dotted", indices: columns[1], emptyMessage: model.settings.workflows.contains(where: \.enabled) ? "当前关键词未匹配工作流程。" : "添加并启用工作流程，直接处理输入内容。", canAddWorkflow: !model.settings.workflows.contains(where: \.enabled))
+                Rectangle().fill(.white.opacity(0.07)).frame(width: 1)
+                actionColumn("文件搜索", symbol: "doc.text.magnifyingglass", indices: columns[2], emptyMessage: model.hasActionKeyword ? "当前输入已匹配快捷关键词。" : (model.localSearch.searchingFiles ? "正在搜索本机文件…" : model.localSearch.fileMessage), isFileSearch: true)
             } else {
                 actionColumn(model.lockedWorkflow == nil ? "选择工作流程" : "已绑定的工作流程", symbol: "point.3.connected.trianglepath.dotted", indices: Array(model.actions.indices), emptyMessage: "暂无启用的流程，请在设置中添加。", canAddWorkflow: true)
                 Rectangle().fill(.white.opacity(0.07)).frame(width: 1)
@@ -74,19 +76,21 @@ struct PanelView: View {
             }
         }.frame(maxHeight: .infinity)
     }
-    private func actionColumn(_ title: String, symbol: String, indices: [Int], emptyMessage: String, canAddWorkflow: Bool = false) -> some View {
+    private func actionColumn(_ title: String, symbol: String, indices: [Int], emptyMessage: String, canAddWorkflow: Bool = false, isFileSearch: Bool = false) -> some View {
         let actions = model.actions
         let rows = indices.filter { actions.indices.contains($0) }.map { (index: $0, action: actions[$0]) }
         return VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 7) {
                 Label(title, systemImage: symbol).font(.system(size: 12, weight: .semibold))
                 Spacer()
-                Text("\(rows.count) 项").font(.system(size: 10))
+                if isFileSearch && model.localSearch.searchingFiles { ProgressView().controlSize(.mini) }
+                Text("\(rows.count)\(isFileSearch && model.localSearch.moreFiles ? "+" : "") 项").font(.system(size: 10))
             }.foregroundStyle(Palette.secondary).padding(.horizontal, 12).padding(.top, 3)
             if rows.isEmpty {
                 VStack(spacing: 12) {
                     Image(systemName: symbol).font(.system(size: 25, weight: .light)).foregroundStyle(Palette.accent.opacity(0.7))
                     Text(emptyMessage).font(.system(size: 12)).foregroundStyle(Palette.secondary).multilineTextAlignment(.center)
+                    if isFileSearch && model.query.isEmpty { Text("使用 macOS 文件索引，按文件名查找。支持文件夹。").font(.system(size: 10)).foregroundStyle(Palette.secondary.opacity(0.7)).multilineTextAlignment(.center) }
                     if canAddWorkflow {
                         Button("添加工作流程") { model.requestedSettingsPage = .workflows; model.onSettings?() }.buttonStyle(.bordered)
                     }
@@ -106,6 +110,11 @@ struct PanelView: View {
                     }
                 }
             }
+            if isFileSearch && !rows.isEmpty {
+                Text("回车打开 · 右键在 Finder 中显示").font(.system(size: 10)).foregroundStyle(Palette.secondary).padding(.horizontal, 12)
+            } else if model.mode == .actions && title == "快捷动作" {
+                Text(model.localSearch.loadingApplications ? "正在读取应用列表…" : "输入应用名可直接打开本机应用").font(.system(size: 10)).foregroundStyle(Palette.secondary).padding(.horizontal, 12)
+            }
         }.padding(14).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
     private var workflowHelp: some View {
@@ -124,13 +133,16 @@ struct PanelView: View {
         }.padding(.horizontal, 24).padding(.vertical, 20).frame(width: 255, alignment: .leading)
     }
     private func actionRow(_ action: ActionItem, index: Int) -> some View {
-        Button { model.selection = index; model.execute() } label: {
+        Button { model.executeAction(id: action.id) } label: {
             HStack(spacing: 12) {
-                Image(systemName: action.symbol).font(.system(size: 18)).foregroundStyle(Palette.tint(action.tint))
-                    .frame(width: 38, height: 38).background(Palette.tint(action.tint).opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
+                Group {
+                    if let item = action.localResult {
+                        Image(nsImage: NSWorkspace.shared.icon(forFile: item.url.path)).resizable().scaledToFit().padding(4)
+                    } else { Image(systemName: action.symbol).font(.system(size: 18)).foregroundStyle(Palette.tint(action.tint)) }
+                }.frame(width: 38, height: 38).background(Palette.tint(action.tint).opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
                 VStack(alignment: .leading, spacing: 5) {
-                    Text(action.title).font(.system(size: action.id == "calculator" ? 23 : 14, weight: .medium)).foregroundStyle(.white.opacity(0.92)).lineLimit(1)
-                    Text(action.subtitle).font(.system(size: 10)).foregroundStyle(Palette.secondary).lineLimit(1)
+                    Text(action.title).font(.system(size: action.id == "calculator" ? 23 : 14, weight: .medium)).foregroundStyle(.white.opacity(0.92)).lineLimit(1).truncationMode(action.localResult == nil ? .tail : .middle)
+                    Text(action.subtitle).font(.system(size: 10)).foregroundStyle(Palette.secondary).lineLimit(1).truncationMode(.middle)
                 }
                 Spacer(minLength: 4)
                 if !action.keyword.isEmpty { KeyCap(text: action.keyword) }
@@ -140,6 +152,12 @@ struct PanelView: View {
                 .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(model.selection == index ? Palette.accent.opacity(0.2) : .clear))
         }.buttonStyle(.plain).help(action.title + " · " + action.subtitle)
             .accessibilityAddTraits(model.selection == index ? .isSelected : [])
+            .contextMenu {
+                if let item = action.localResult {
+                    Button("打开") { model.openLocal(item) }
+                    Button("在 Finder 中显示") { model.openLocal(item, reveal: true) }
+                }
+            }
     }
     private var clipboardBody: some View {
         HStack(spacing: 0) {
@@ -214,7 +232,7 @@ struct PanelView: View {
                 if clipboard.paused || !model.settings.clipboardEnabled { Text("剪贴板记录已暂停").font(.system(size: 10)).foregroundStyle(.orange) }
                 if model.mode == .clipboard { KeyCap(text: "↵"); Text(model.settings.pasteOnSelect ? "粘贴到原应用" : "复制选中项").font(.system(size: 10)).foregroundStyle(Palette.secondary) }
                 else {
-                    if model.mode == .actions, !model.running, model.result == nil, model.actionColumns.allSatisfy({ !$0.isEmpty }) {
+                    if model.mode == .actions, !model.running, model.result == nil, model.actionColumns.filter({ !$0.isEmpty }).count > 1 {
                         KeyCap(text: "Tab"); Text("切列").font(.system(size: 10)).foregroundStyle(Palette.secondary)
                     }
                     KeyCap(text: "↑ ↓"); Text("选择").font(.system(size: 10)).foregroundStyle(Palette.secondary); KeyCap(text: "↵"); Text("执行").font(.system(size: 10)).foregroundStyle(Palette.secondary)

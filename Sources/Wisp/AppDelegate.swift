@@ -39,6 +39,11 @@ private final class CommandPanel: NSPanel {
         statusItem.button?.toolTip = "Wisp · 快捷动作与剪贴板"
         let menu = NSMenu(); menu.delegate = self; statusItem.menu = menu; updateMenu(menu)
         model.onHide = { [weak self] in self?.hidePanel() }
+        model.localOpener = { [weak self] url in
+            guard NSWorkspace.shared.open(url) else { return false }
+            self?.hidePanel(restoreFocus: false)
+            return true
+        }
         model.onSettings = { [weak self] in self?.showSettings() }
         model.onPaste = { [weak self] in self?.pasteToPreviousApp() }
         model.onHandoff = { [weak self] _ in self?.handoffToDoubao() }
@@ -71,7 +76,7 @@ private final class CommandPanel: NSPanel {
         else { show(.actions) }
     }
     private func createPanel() {
-        panel = CommandPanel(contentRect: NSRect(x: 0, y: 0, width: 860, height: 570), styleMask: [.borderless], backing: .buffered, defer: false)
+        panel = CommandPanel(contentRect: NSRect(x: 0, y: 0, width: 1140, height: 620), styleMask: [.borderless], backing: .buffered, defer: false)
         panel.level = .floating; panel.isOpaque = false; panel.backgroundColor = .clear; panel.hasShadow = true
         panel.isMovableByWindowBackground = true; panel.hidesOnDeactivate = false
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
@@ -102,7 +107,7 @@ private final class CommandPanel: NSPanel {
         let pointer = NSEvent.mouseLocation
         let screen = NSScreen.screens.first { $0.frame.contains(pointer) } ?? NSScreen.main
         if let frame = screen?.visibleFrame {
-            let width = min(860, frame.width - 32), height = min(570, frame.height - 48)
+            let width = min(1140, frame.width - 32), height = min(620, frame.height - 48)
             panel.setFrame(NSRect(x: frame.midX - width / 2, y: frame.midY - height / 2 + frame.height * 0.08, width: width, height: height), display: true)
         }
         NSApp.activate(); panel.makeKeyAndOrderFront(nil)
@@ -266,5 +271,5 @@ private final class CommandPanel: NSPanel {
         else { show(.actions) }
         return true
     }
-    func applicationWillTerminate(_ notification: Notification) { setupTimer?.invalidate(); model?.cancel(); hotKeys.stop(); if let keyboardMonitor { NSEvent.removeMonitor(keyboardMonitor) } }
+    func applicationWillTerminate(_ notification: Notification) { setupTimer?.invalidate(); model?.cancel(); model?.stopLocalSearch(); hotKeys.stop(); if let keyboardMonitor { NSEvent.removeMonitor(keyboardMonitor) } }
 }
