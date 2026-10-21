@@ -77,6 +77,11 @@ struct SettingsView: View {
                 }.buttonStyle(.plain)
             }
             Spacer()
+            Button { model.onSetup?(.shortcuts) } label: {
+                Label("配置引导", systemImage: "questionmark.circle").font(.system(size: 13))
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 12).padding(.vertical, 11)
+                    .foregroundStyle(.secondary).contentShape(Rectangle())
+            }.buttonStyle(.plain).help("查看快捷入口、后台唤起和工具连接").padding(.bottom, 10)
             Text("本地优先 · 键盘优先").font(.system(size: 10)).foregroundStyle(.secondary)
             Text("版本 \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "开发版")").font(.system(size: 10)).foregroundStyle(.tertiary)
         }.padding(16).frame(width: 186).background(.white.opacity(0.025))
