@@ -162,36 +162,43 @@ struct PanelView: View {
     private var clipboardBody: some View {
         HStack(spacing: 0) {
             VStack(spacing: 7) {
+                clipboardCategories
                 HStack {
                     Text("\(model.clips.count) 条记录").font(.system(size: 10))
                     Spacer()
                     Button { clipboard.paused.toggle() } label: { Image(systemName: clipboard.paused ? "play.fill" : "pause.fill") }.help(clipboard.paused ? "恢复记录" : "暂停记录")
-                    Button { confirmClear = true } label: { Image(systemName: "trash") }.help("清空历史")
+                    Button { confirmClear = true } label: { Image(systemName: "trash") }.help("清空全部历史")
                 }.buttonStyle(.plain).foregroundStyle(Palette.secondary).padding(.horizontal, 12).padding(.vertical, 6)
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        LazyVStack(spacing: 3) {
-                            ForEach(Array(model.clips.enumerated()), id: \.element.id) { index, clip in
-                                Button { model.selection = index; model.execute() } label: {
-                                    HStack(spacing: 10) {
-                                        Image(systemName: clip.symbol).foregroundStyle(Palette.accent).frame(width: 24)
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            Text(clip.title).font(.system(size: 12)).lineLimit(1).foregroundStyle(.white.opacity(0.9))
-                                            Text(clip.source + " · " + clip.createdAt.formatted(date: .omitted, time: .shortened)).font(.system(size: 10)).foregroundStyle(Palette.secondary)
-                                        }; Spacer(minLength: 0)
-                                        if clip.pinned { Image(systemName: "pin.fill").font(.system(size: 10)).foregroundStyle(Palette.accent) }
-                                    }.padding(10).contentShape(Rectangle()).background(model.selection == index ? Palette.accent.opacity(0.12) : .clear, in: RoundedRectangle(cornerRadius: 8))
-                                }.buttonStyle(.plain).id(clip.id)
-                                .contextMenu {
-                                    Button(clip.pinned ? "取消置顶" : "置顶") { clipboard.togglePin(clip.id) }
-                                    Button("删除", role: .destructive) { clipboard.delete(clip.id) }
+                if model.clips.isEmpty {
+                    VStack(spacing: 10) {
+                        Image(systemName: model.clipboardCategory.symbol).font(.system(size: 30))
+                        Text(clipboardEmptyMessage).font(.system(size: 12))
+                    }.foregroundStyle(Palette.secondary).frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ScrollViewReader { proxy in
+                        ScrollView {
+                            LazyVStack(spacing: 3) {
+                                ForEach(Array(model.clips.enumerated()), id: \.element.id) { index, clip in
+                                    Button { model.executeClip(id: clip.id) } label: {
+                                        HStack(spacing: 10) {
+                                            Image(systemName: clip.symbol).foregroundStyle(Palette.accent).frame(width: 24)
+                                            VStack(alignment: .leading, spacing: 4) {
+                                                Text(clip.title).font(.system(size: 12)).lineLimit(1).foregroundStyle(.white.opacity(0.9))
+                                                Text(clip.source + " · " + clip.createdAt.formatted(date: .omitted, time: .shortened)).font(.system(size: 10)).foregroundStyle(Palette.secondary)
+                                            }; Spacer(minLength: 0)
+                                            if clip.pinned { Image(systemName: "pin.fill").font(.system(size: 10)).foregroundStyle(Palette.accent) }
+                                        }.padding(10).contentShape(Rectangle()).background(model.selection == index ? Palette.accent.opacity(0.12) : .clear, in: RoundedRectangle(cornerRadius: 8))
+                                    }.buttonStyle(.plain).id(clip.id)
+                                    .contextMenu {
+                                        Button(clip.pinned ? "取消置顶" : "置顶") { clipboard.togglePin(clip.id) }
+                                        Button("删除", role: .destructive) { clipboard.delete(clip.id) }
+                                    }
                                 }
                             }
-                        }
-                    }.onChange(of: model.selection) { _, value in if model.clips.indices.contains(value) { proxy.scrollTo(model.clips[value].id, anchor: .center) } }
-                }
-                if model.clips.isEmpty {
-                    VStack(spacing: 10) { Image(systemName: "clipboard").font(.system(size: 30)); Text(model.query.isEmpty ? "复制一些内容，从这里开始" : "没有匹配的记录").font(.system(size: 12)) }.foregroundStyle(Palette.secondary).frame(maxWidth: .infinity, maxHeight: .infinity)
+                        }.onChange(of: model.selection) { _, value in if model.clips.indices.contains(value) { proxy.scrollTo(model.clips[value].id, anchor: .center) } }
+                        .onChange(of: model.clipboardCategory) { _, _ in if let clip = model.clips.first { proxy.scrollTo(clip.id, anchor: .top) } }
+                        .onChange(of: model.query) { _, _ in if let clip = model.clips.first { proxy.scrollTo(clip.id, anchor: .top) } }
+                    }
                 }
             }.padding(12).frame(width: 410)
             Rectangle().fill(.white.opacity(0.07)).frame(width: 1)
@@ -209,6 +216,23 @@ struct PanelView: View {
                 } else { Text("你的剪贴板，有了记忆").font(.system(size: 14)).foregroundStyle(Palette.secondary).frame(maxWidth: .infinity, maxHeight: .infinity) }
             }.frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+    }
+    private var clipboardCategories: some View {
+        HStack(spacing: 3) {
+            ForEach(ClipboardCategory.allCases, id: \.self) { category in
+                Button { model.switchClipboardCategory(category) } label: {
+                    Text(category.title).font(.system(size: 12, weight: .medium))
+                        .frame(maxWidth: .infinity).padding(.vertical, 8).contentShape(Rectangle())
+                        .foregroundStyle(model.clipboardCategory == category ? .white : Palette.secondary)
+                        .background(model.clipboardCategory == category ? Palette.accent.opacity(0.2) : .clear, in: RoundedRectangle(cornerRadius: 7))
+                }.buttonStyle(.plain).accessibilityAddTraits(model.clipboardCategory == category ? .isSelected : [])
+            }
+        }.padding(3).background(.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 9))
+        .accessibilityElement(children: .contain).accessibilityLabel("剪贴板分类")
+    }
+    private var clipboardEmptyMessage: String {
+        if !model.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return "当前分类没有匹配的记录" }
+        return model.clipboardCategory == .all ? "复制一些内容，从这里开始" : "暂无\(model.clipboardCategory.title)记录"
     }
     private func resultView(_ result: String) -> some View {
         VStack(spacing: 0) {

@@ -13,6 +13,7 @@ import AppKit
     @Published var focusToken = UUID()
     @Published var lockedWorkflow: UUID?
     @Published var requestedSettingsPage: SettingsPage?
+    @Published private(set) var clipboardCategory: ClipboardCategory = .all
     @Published private(set) var localSearch = LocalSearchSnapshot()
     let disk: DiskStore
     let clipboard: ClipboardStore
@@ -48,7 +49,7 @@ import AppKit
     }
     var clips: [Clip] {
         let term = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        return clipboard.items.filter { term.isEmpty || $0.text.localizedCaseInsensitiveContains(term) || $0.source.localizedCaseInsensitiveContains(term) }
+        return clipboard.items.filter { clipboardCategory.contains($0) && (term.isEmpty || $0.text.localizedCaseInsensitiveContains(term) || $0.source.localizedCaseInsensitiveContains(term)) }
     }
     var allActions: [ActionItem] {
         var values = localSearch.applications.map(localAction) + [
@@ -107,11 +108,16 @@ import AppKit
     var placeholder: String { switch mode { case .clipboard: return "搜索剪贴板内容或来源应用…"; case .actions: return "搜索应用、文件，或输入内容执行动作…"; case .workflows: return "输入内容，交给工作流程…" } }
     func open(_ mode: PanelMode, workflow: UUID? = nil) {
         self.mode = mode; lockedWorkflow = workflow; query = ""; selection = 0
+        if mode == .clipboard { clipboardCategory = .all }
         hasNavigated = false; refreshLocalSearch()
         if !running { result = nil; status = mode == .clipboard ? "内容仅保存在这台 Mac" : "随时调用你的工具"; isError = false }
         focusToken = UUID()
     }
     func switchMode(_ mode: PanelMode) { open(mode) }
+    func switchClipboardCategory(_ category: ClipboardCategory) {
+        guard clipboardCategory != category else { return }
+        clipboardCategory = category; selection = 0; focusToken = UUID()
+    }
     func move(_ delta: Int) {
         guard rowCount > 0 else { return }
         hasNavigated = true
@@ -136,6 +142,10 @@ import AppKit
     func executeAction(id: String) {
         guard let index = actions.firstIndex(where: { $0.id == id }) else { return }
         selection = index; hasNavigated = true; execute()
+    }
+    func executeClip(id: UUID) {
+        guard mode == .clipboard, let index = clips.firstIndex(where: { $0.id == id }) else { return }
+        selection = index; execute()
     }
     func openLocal(_ item: LocalSearchResult, reveal: Bool = false) {
         guard FileManager.default.fileExists(atPath: item.url.path) else { showError(AppError.message("项目已移动或删除，请重新搜索。")); return }

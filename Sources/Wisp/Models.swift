@@ -182,6 +182,14 @@ struct Settings: Codable, Equatable {
 }
 
 enum ClipKind: String, Codable { case text, image, files }
+enum ClipboardCategory: CaseIterable {
+    case all, text, image, files
+    var title: String { switch self { case .all: return "全部"; case .text: return "文字"; case .image: return "图片"; case .files: return "文件" } }
+    var symbol: String { switch self { case .all: return "clipboard"; case .text: return "text.alignleft"; case .image: return "photo"; case .files: return "doc.on.doc" } }
+    func contains(_ clip: Clip) -> Bool {
+        switch self { case .all: return true; case .text: return clip.kind == .text; case .image: return clip.kind == .image; case .files: return clip.kind == .files }
+    }
+}
 struct Clip: Codable, Identifiable {
     var id = UUID()
     var kind: ClipKind
