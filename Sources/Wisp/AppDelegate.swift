@@ -44,6 +44,7 @@ private final class CommandPanel: NSPanel {
             self?.hidePanel(restoreFocus: false)
             return true
         }
+        model.urlOpener = model.localOpener
         model.onSettings = { [weak self] in self?.showSettings() }
         model.onPaste = { [weak self] in self?.pasteToPreviousApp() }
         model.onHandoff = { [weak self] _ in self?.handoffToDoubao() }

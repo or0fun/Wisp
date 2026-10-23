@@ -24,7 +24,7 @@ struct ScriptGeneratorView: View {
             if let configuration {
                 Text("使用 \(configuration.baseURL)；只发送本次需求、当前脚本和解释器信息。").font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
             } else {
-                Text("请先在「AI 助手 → 脚本生成模型」配置 Base URL、API Key 和模型名称并保存。").font(.callout).foregroundStyle(.orange)
+                Text("请先在「AI 助手 → 问答与脚本模型」配置 Base URL、API Key 和模型名称并保存。").font(.callout).foregroundStyle(.orange)
             }
             Text("描述脚本要做什么").font(.headline)
             TextEditor(text: $request).font(.system(size: 13)).frame(height: 105)

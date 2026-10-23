@@ -1,7 +1,7 @@
 import AppKit
 
 enum ActionDestination {
-    case codex, doubao, search(SearchEngine), workflow(Workflow), calculation(CalculationResult), local(LocalSearchResult)
+    case codex, doubao, search(SearchEngine), workflow(Workflow), calculation(CalculationResult), local(LocalSearchResult), openURL(URL), question
 }
 struct ActionItem: Identifiable {
     let id: String
@@ -16,6 +16,27 @@ struct ActionItem: Identifiable {
     var isFileSearch: Bool { localResult.map { !$0.isApplication } ?? false }
 }
 enum ActionService {
+    static func validateQuestionProvider(settings: Settings) throws {
+        switch settings.resolvedQuestionProvider {
+        case .modelAPI:
+            guard let configuration = settings.scriptModel else { throw AppError.message("请先在 AI 助手中配置「问答与脚本模型」。") }
+            try configuration.validate()
+        case .doubaoAPI:
+            guard !settings.apiModel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw AppError.message("请先在 AI 助手中填写豆包模型 / Endpoint ID 和 API Key。") }
+        case .codex: _ = try codexExecutable(settings: settings)
+        }
+    }
+    static func answer(input: String, settings: Settings, runner: ProcessRunner, keyReader: (String) throws -> String = { try Keychain.read(account: $0) }) async throws -> String {
+        try validateQuestionProvider(settings: settings)
+        switch settings.resolvedQuestionProvider {
+        case .modelAPI:
+            guard let configuration = settings.scriptModel else { throw AppError.message("问答模型尚未配置。") }
+            let key = try keyReader(LLMService.scriptKeyAccount)
+            return try await LLMService.complete(endpoint: configuration.endpoint(), model: configuration.model, key: key, messages: LLMService.questionMessages(input))
+        case .doubaoAPI: return try await doubao(input: input, settings: settings)
+        case .codex: return try await codex(input: "请直接回答下面的问题，使用与问题相同的语言。只需回答，无需检查工作区或执行命令。\n\n" + input, settings: settings, runner: runner)
+        }
+    }
     static func codexExecutable(settings: Settings) throws -> String {
         let configured = (settings.codexPath as NSString).expandingTildeInPath
         if !configured.isEmpty {

@@ -17,12 +17,15 @@ struct ModelConfiguration: Codable, Equatable {
     }
     func validate() throws {
         _ = try endpoint()
-        guard !model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw AppError.message("请填写脚本生成模型名称。") }
+        guard !model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw AppError.message("请填写问答与脚本模型名称。") }
     }
 }
 
 enum LLMService {
     static let scriptKeyAccount = "script-generation-api-key"
+    static func questionMessages(_ question: String) -> [[String: String]] {
+        [["role": "user", "content": question]]
+    }
     static func complete(endpoint: URL, model: String, key: String, messages: [[String: String]]) async throws -> String {
         var request = URLRequest(url: endpoint, timeoutInterval: 180)
         request.httpMethod = "POST"

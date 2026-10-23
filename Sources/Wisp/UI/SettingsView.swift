@@ -163,12 +163,18 @@ struct SettingsView: View {
     }
     private var ai: some View {
         Form {
-            Section("脚本生成模型（OpenAI 兼容）") {
+            Section("问题问答") {
+                Picker("问答模型", selection: Binding(get: { draft.questionProvider ?? .modelAPI }, set: { draft.questionProvider = $0 })) {
+                    ForEach(QuestionProvider.allCases, id: \.self) { provider in Text(provider.title).tag(provider) }
+                }
+                Text("首页输入以 ? 或 ？ 结尾，按回车提问。默认使用下方通用模型配置；仅请求所选服务，失败时不会自动切换。").font(.caption).foregroundStyle(.secondary)
+            }
+            Section("问答与脚本模型（OpenAI 兼容）") {
                 TextField("Base URL", text: Binding(get: { (draft.scriptModel ?? ModelConfiguration()).baseURL }, set: { value in var config = draft.scriptModel ?? ModelConfiguration(); config.baseURL = value; draft.scriptModel = config }))
                 TextField("模型名称", text: Binding(get: { draft.scriptModel?.model ?? "" }, set: { value in var config = draft.scriptModel ?? ModelConfiguration(); config.model = value; draft.scriptModel = config }))
                 SecureField("API Key（本地无鉴权服务可留空）", text: $scriptAPIKey).disabled(!scriptKeyLoaded)
                 if !scriptKeyLoaded { Button("读取模型密钥", action: loadKey) }
-                Text("Base URL 自动拼接 /chat/completions；也可填写完整接口。密钥单独存入系统钥匙串，保存后可在工作流程步骤中点击「AI 写脚本」。").font(.caption).foregroundStyle(.secondary)
+                Text("此模型用于通用问答和「AI 写脚本」。Base URL 自动拼接 /chat/completions；密钥单独存入系统钥匙串。问答只发送当前问题，按回车才请求。").font(.caption).foregroundStyle(.secondary)
             }
             Section("豆包") {
                 Picker("处理方式", selection: $draft.doubaoMode) { Text("唤起应用 / 网页").tag(DoubaoMode.handoff); Text("API 直接处理").tag(DoubaoMode.api) }

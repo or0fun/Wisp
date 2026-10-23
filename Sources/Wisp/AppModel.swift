@@ -33,6 +33,8 @@ import AppKit
     private let localSearchService: LocalSearchService
     private var hasNavigated = false
     var localOpener: (URL) -> Bool = { NSWorkspace.shared.open($0) }
+    var urlOpener: (URL) -> Bool = { NSWorkspace.shared.open($0) }
+    var questionResponder: (String, Settings, ProcessRunner) async throws -> String = { try await ActionService.answer(input: $0, settings: $1, runner: $2) }
 
     init(disk: DiskStore, localSearchService: LocalSearchService? = nil) {
         self.disk = disk
@@ -52,6 +54,10 @@ import AppKit
         let term = query.trimmingCharacters(in: .whitespacesAndNewlines)
         return clipboard.items.filter { clipboardCategory.contains($0) && (term.isEmpty || $0.text.localizedCaseInsensitiveContains(term) || $0.source.localizedCaseInsensitiveContains(term)) }
     }
+    var inputIntent: InputIntent? { mode == .actions && !hasActionKeyword ? InputIntent.detect(query) : nil }
+    var inputRoutingMessage: String? {
+        switch inputIntent { case .link: return "链接已识别，回车在默认浏览器打开。"; case .question: return "问题已识别，回车调用大模型回答。"; case nil: return nil }
+    }
     var allActions: [ActionItem] {
         var values = localSearch.applications.map(localAction) + [
             ActionItem(id: "doubao", title: "豆包", subtitle: settings.doubaoMode == .api ? "使用豆包 API 处理输入" : "复制输入并打开豆包", symbol: "bubble.left.and.bubble.right", tint: "blue", keyword: "", destination: .doubao),
@@ -68,6 +74,13 @@ import AppKit
             }
             values.insert(ActionItem(id: "calculator", title: title, subtitle: subtitle, symbol: "equal.circle", tint: "green", keyword: "", destination: .calculation(calculation)), at: 0)
         }
+        switch inputIntent {
+        case .link(let url): values.insert(ActionItem(id: "open-url", title: "打开链接", subtitle: url.absoluteString, symbol: "link", tint: "blue", keyword: "", destination: .openURL(url)), at: 0)
+        case .question:
+            let subtitle = settings.resolvedQuestionProvider == .modelAPI && settings.scriptModel == nil ? "尚未配置通用模型 API · 回车前往设置" : "使用\(settings.resolvedQuestionProvider.title)回答 · 回车提问"
+            values.insert(ActionItem(id: "ask-question", title: "问大模型", subtitle: subtitle, symbol: "questionmark.bubble", tint: "purple", keyword: "", destination: .question), at: 0)
+        case nil: break
+        }
         return values
     }
     private func localAction(_ result: LocalSearchResult) -> ActionItem {
@@ -83,11 +96,11 @@ import AppKit
         guard mode == .actions else { return }
         let values = actions
         if hasNavigated { selection = selectedID.flatMap { id in values.firstIndex(where: { $0.id == id }) } ?? -1 }
-        else if !values.contains(where: { $0.id == "calculator" || $0.localResult?.isApplication == true }), let file = values.firstIndex(where: \.isFileSearch) { selection = file }
+        else if inputIntent == nil, !values.contains(where: { $0.id == "calculator" || $0.localResult?.isApplication == true }), let file = values.firstIndex(where: \.isFileSearch) { selection = file }
         else { selection = 0 }
     }
     private func refreshLocalSearch() {
-        if mode == .actions { localSearchService.search(hasActionKeyword ? "" : query) }
+        if mode == .actions && inputIntent == nil { localSearchService.search(hasActionKeyword ? "" : query) }
         else { localSearchService.cancel() }
     }
     private var workflowActions: [ActionItem] {
@@ -170,6 +183,11 @@ import AppKit
         if !action.keyword.isEmpty, input.lowercased().hasPrefix(action.keyword.lowercased() + " ") { input = String(input.dropFirst(action.keyword.count + 1)) }
         guard !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { status = "先输入需要处理的内容"; isError = true; focusToken = UUID(); return }
         switch action.destination {
+        case .openURL(let url):
+            if !urlOpener(url) { showError(AppError.message("无法打开链接，请检查默认浏览器。")) }
+        case .question:
+            do { try ActionService.validateQuestionProvider(settings: settings); start(action, input: input) }
+            catch { showError(error); requestedSettingsPage = .ai; onSettings?() }
         case .calculation(let calculation):
             switch calculation {
             case .value(let value): clipboard.copyText(value); status = "计算结果已复制"; isError = false
@@ -193,12 +211,13 @@ import AppKit
             do {
                 let output: String
                 switch action.destination {
+                case .question: output = try await self.questionResponder(input, settings, runner)
                 case .codex: output = try await ActionService.codex(input: input, settings: settings, runner: runner)
                 case .doubao: output = try await ActionService.doubao(input: input, settings: settings)
                 case .workflow(let workflow):
                     output = try await ActionService.workflow(workflow, input: input, runner: runner) { [weak self] in self?.status = $0 }
                     if workflow.copyOutput { self.clipboard.copyText(output) }
-                case .search, .calculation, .local: return
+                case .search, .calculation, .local, .openURL: return
                 }
                 try Task.checkCancellation()
                 self.result = output.isEmpty ? "（流程执行成功，没有文本输出）" : output

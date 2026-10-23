@@ -112,6 +112,10 @@ struct Workflow: Codable, Identifiable, Equatable {
 }
 
 enum DoubaoMode: String, Codable, CaseIterable { case handoff, api }
+enum QuestionProvider: String, Codable, CaseIterable {
+    case modelAPI, doubaoAPI, codex
+    var title: String { switch self { case .modelAPI: return "通用模型 API"; case .doubaoAPI: return "豆包 API"; case .codex: return "Codex CLI" } }
+}
 
 struct Settings: Codable, Equatable {
     var launcherHotKey = HotKey.launcher
@@ -119,6 +123,8 @@ struct Settings: Codable, Equatable {
     var workflowsHotKey = HotKey.workflows
     var sequenceInterval: Double?
     var scriptModel: ModelConfiguration?
+    var questionProvider: QuestionProvider?
+    var resolvedQuestionProvider: QuestionProvider { questionProvider ?? .modelAPI }
     var keySequenceInterval: Double { sequenceInterval ?? 0.4 }
     var hasKeySequences: Bool { ([launcherHotKey, clipboardHotKey, workflowsHotKey] + workflows.filter(\.enabled).compactMap(\.hotKey)).contains(where: \.isSequence) }
     var clipboardEnabled = true

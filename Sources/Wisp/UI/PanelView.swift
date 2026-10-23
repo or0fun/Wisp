@@ -68,7 +68,7 @@ struct PanelView: View {
                 Rectangle().fill(.white.opacity(0.07)).frame(width: 1)
                 actionColumn("工作流程", symbol: "point.3.connected.trianglepath.dotted", indices: columns[1], emptyMessage: model.settings.workflows.contains(where: \.enabled) ? "当前关键词未匹配工作流程。" : "添加并启用工作流程，直接处理输入内容。", canAddWorkflow: !model.settings.workflows.contains(where: \.enabled))
                 Rectangle().fill(.white.opacity(0.07)).frame(width: 1)
-                actionColumn("文件搜索", symbol: "doc.text.magnifyingglass", indices: columns[2], emptyMessage: model.hasActionKeyword ? "当前输入已匹配快捷关键词。" : (model.localSearch.searchingFiles ? "正在搜索本机文件…" : model.localSearch.fileMessage), isFileSearch: true)
+                actionColumn("文件搜索", symbol: "doc.text.magnifyingglass", indices: columns[2], emptyMessage: model.hasActionKeyword ? "当前输入已匹配快捷关键词。" : (model.inputRoutingMessage ?? (model.localSearch.searchingFiles ? "正在搜索本机文件…" : model.localSearch.fileMessage)), isFileSearch: true)
             } else {
                 actionColumn(model.lockedWorkflow == nil ? "选择工作流程" : "已绑定的工作流程", symbol: "point.3.connected.trianglepath.dotted", indices: Array(model.actions.indices), emptyMessage: "暂无启用的流程，请在设置中添加。", canAddWorkflow: true)
                 Rectangle().fill(.white.opacity(0.07)).frame(width: 1)
@@ -113,7 +113,7 @@ struct PanelView: View {
             if isFileSearch && !rows.isEmpty {
                 Text("回车打开 · 右键在 Finder 中显示").font(.system(size: 10)).foregroundStyle(Palette.secondary).padding(.horizontal, 12)
             } else if model.mode == .actions && title == "快捷动作" {
-                Text(model.localSearch.loadingApplications ? "正在读取应用列表…" : "输入应用名可直接打开本机应用").font(.system(size: 10)).foregroundStyle(Palette.secondary).padding(.horizontal, 12)
+                Text(model.inputRoutingMessage ?? (model.localSearch.loadingApplications ? "正在读取应用列表…" : "输入应用名可直接打开本机应用")).font(.system(size: 10)).foregroundStyle(Palette.secondary).padding(.horizontal, 12)
             }
         }.padding(14).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
