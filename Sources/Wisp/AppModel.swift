@@ -11,6 +11,7 @@ import AppKit
     @Published var status = "随时调用你的工具"
     @Published var isError = false
     @Published var focusToken = UUID()
+    @Published private(set) var inputSessionID = UUID()
     @Published var lockedWorkflow: UUID?
     @Published var requestedSettingsPage: SettingsPage?
     @Published private(set) var clipboardCategory: ClipboardCategory = .all
@@ -108,6 +109,7 @@ import AppKit
     var placeholder: String { switch mode { case .clipboard: return "搜索剪贴板内容或来源应用…"; case .actions: return "搜索应用、文件，或输入内容执行动作…"; case .workflows: return "输入内容，交给工作流程…" } }
     func open(_ mode: PanelMode, workflow: UUID? = nil) {
         self.mode = mode; lockedWorkflow = workflow; query = ""; selection = 0
+        inputSessionID = UUID()
         if mode == .clipboard { clipboardCategory = .all }
         hasNavigated = false; refreshLocalSearch()
         if !running { result = nil; status = mode == .clipboard ? "内容仅保存在这台 Mac" : "随时调用你的工具"; isError = false }

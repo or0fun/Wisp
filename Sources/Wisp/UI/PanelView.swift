@@ -56,7 +56,7 @@ struct PanelView: View {
                 .font(.system(size: 21, weight: .light)).foregroundStyle(Palette.accent).frame(width: 27).padding(.top, 9)
             ZStack(alignment: .topLeading) {
                 if model.query.isEmpty { Text(model.placeholder).font(.system(size: 21)).foregroundStyle(.white.opacity(0.28)).padding(.top, 7).allowsHitTesting(false) }
-                CommandInput(text: $model.query, focusToken: model.focusToken, onSubmit: model.execute, onMove: model.move, onSwitchColumn: model.switchActionColumn, onEscape: { model.onHide?() }, onChange: model.inputChanged)
+                CommandInput(text: $model.query, resetToken: model.inputSessionID, focusToken: model.focusToken, onSubmit: model.execute, onMove: model.move, onSwitchColumn: model.switchActionColumn, onEscape: { model.onHide?() }, onChange: model.inputChanged)
             }.frame(height: 62)
         }.padding(.horizontal, 24).padding(.top, 8).padding(.bottom, 12)
     }

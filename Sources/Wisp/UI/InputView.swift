@@ -3,6 +3,7 @@ import Carbon
 
 struct CommandInput: NSViewRepresentable {
     @Binding var text: String
+    let resetToken: UUID
     let focusToken: UUID
     let onSubmit: () -> Void
     let onMove: (Int) -> Void
@@ -15,7 +16,8 @@ struct CommandInput: NSViewRepresentable {
         scroll.drawsBackground = false; scroll.hasVerticalScroller = true; scroll.autohidesScrollers = true
         let view = CommandTextView()
         view.isRichText = false; view.isAutomaticQuoteSubstitutionEnabled = false; view.isAutomaticDashSubstitutionEnabled = false
-        view.isAutomaticTextReplacementEnabled = false; view.font = .systemFont(ofSize: 21, weight: .regular)
+        view.isAutomaticTextReplacementEnabled = false; view.isAutomaticSpellingCorrectionEnabled = false
+        view.font = .systemFont(ofSize: 21, weight: .regular)
         view.textColor = .white; view.insertionPointColor = NSColor(Palette.accent)
         view.drawsBackground = false; view.textContainerInset = NSSize(width: 0, height: 6)
         view.isVerticallyResizable = true; view.isHorizontallyResizable = false
@@ -35,13 +37,22 @@ struct CommandInput: NSViewRepresentable {
         }
     }
     private func update(_ view: CommandTextView, coordinator: Coordinator) {
-        if view.string != text { view.string = text; view.setSelectedRange(NSRange(location: view.string.utf16.count, length: 0)) }
+        coordinator.resetIfNeeded(view, text: text, token: resetToken)
         view.onSubmit = onSubmit; view.onMove = onMove; view.onSwitchColumn = onSwitchColumn; view.onEscape = onEscape
     }
     final class Coordinator: NSObject, NSTextViewDelegate {
         var parent: CommandInput
         var lastFocus: UUID?
+        private var lastReset: UUID?
         init(_ parent: CommandInput) { self.parent = parent }
+        func resetIfNeeded(_ view: NSTextView, text: String, token: UUID) {
+            // The editor owns the draft. Model echoes and result refreshes must not
+            // replace native edits, marked text, or the current selection.
+            guard lastReset != token else { return }
+            lastReset = token
+            view.string = text
+            view.setSelectedRange(NSRange(location: text.utf16.count, length: 0))
+        }
         func textDidChange(_ notification: Notification) {
             guard let view = notification.object as? NSTextView else { return }
             parent.text = view.string; parent.onChange()
@@ -96,17 +107,26 @@ struct ScriptEditor: NSViewRepresentable {
         view.font = .monospacedSystemFont(ofSize: 12, weight: .regular); view.textColor = .textColor
         view.textContainerInset = NSSize(width: 7, height: 7); view.autoresizingMask = [.width]
         view.isVerticallyResizable = true; view.isHorizontallyResizable = false; view.textContainer?.widthTracksTextView = true
-        view.delegate = context.coordinator; view.string = text; scroll.documentView = view
+        view.delegate = context.coordinator; context.coordinator.update(view, text: text); scroll.documentView = view
         return scroll
     }
     func updateNSView(_ scroll: NSScrollView, context: Context) {
         context.coordinator.parent = self
-        if let view = scroll.documentView as? NSTextView, view.string != text { view.string = text }
+        if let view = scroll.documentView as? NSTextView { context.coordinator.update(view, text: text) }
     }
     final class Coordinator: NSObject, NSTextViewDelegate {
         var parent: ScriptEditor
+        private var lastModelText: String?
         init(_ parent: ScriptEditor) { self.parent = parent }
-        func textDidChange(_ notification: Notification) { if let view = notification.object as? NSTextView { parent.text = view.string } }
+        func update(_ view: NSTextView, text: String) {
+            guard !view.hasMarkedText(), lastModelText != text else { return }
+            lastModelText = text
+            if view.string != text { view.string = text }
+        }
+        func textDidChange(_ notification: Notification) {
+            guard let view = notification.object as? NSTextView else { return }
+            lastModelText = view.string; parent.text = view.string
+        }
     }
 }
 

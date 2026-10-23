@@ -45,6 +45,8 @@ open build/Wisp.app
 
 应用常驻菜单栏，不显示 Dock 图标。首次启动会打开配置引导；也可稍后从菜单栏重新进入。
 
+输入框的 AppKit 回归检查可运行 `./scripts/check-input.sh`，覆盖中文组词、光标选区、旧状态回传和主动清空；仅需 Command Line Tools，不依赖 XCTest，不读写用户历史。
+
 当前以源码构建方式使用，默认采用本地 ad-hoc 签名，尚未提供经过 Developer ID 签名与公证的安装包。更新后可能需要重新授予辅助功能权限，处理方法见[使用指南](docs/usage.md#配置引导与后台诊断)。
 
 ## 开始使用
